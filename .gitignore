@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# fortune 索引文件（生成文件，格式隨 fortune 版本而異，不應提交）
+# fortune 數據與索引均由 make compile 生成，不應提交
+data/
