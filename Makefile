@@ -1,4 +1,5 @@
 PREFIX ?= /usr/local
+DESTDIR ?=
 FORTUNE_ANSI ?= yes
 BREW_FORTUNE_PREFIX := $(shell brew --prefix fortune 2>/dev/null)
 BUILD_FLAGS :=
@@ -6,10 +7,17 @@ ifneq ($(FORTUNE_ANSI),no)
   BUILD_FLAGS += --ansi
 endif
 
-# 偵測是否為 Arch Linux (Arch Linux 的 fortune 數據路徑通常為 /usr/share/fortune，而非 Debian/Ubuntu 的 /usr/share/games/fortunes)
+# Arch Linux 使用 share/fortune；Debian/Ubuntu 等使用 share/games/fortunes
 IS_ARCH := $(shell [ -f /etc/arch-release ] && echo yes || echo no)
 
-ifeq ($(origin FORTUNE_DIR),undefined)
+# FORTUNE_DIR：僅當未由環境變數或 make 命令列指定時，才依 PREFIX / Homebrew / 系統推導
+_fortune_dir_origin := $(origin FORTUNE_DIR)
+ifeq ($(_fortune_dir_origin),environment)
+  FORTUNE_DIR_SOURCE := env
+else ifeq ($(_fortune_dir_origin),command line)
+  FORTUNE_DIR_SOURCE := command
+else
+  FORTUNE_DIR_SOURCE := default
   ifeq ($(origin PREFIX),command line)
     ifeq ($(IS_ARCH),yes)
       FORTUNE_DIR := $(PREFIX)/share/fortune
@@ -18,37 +26,37 @@ ifeq ($(origin FORTUNE_DIR),undefined)
     endif
   else ifneq ($(BREW_FORTUNE_PREFIX),)
     FORTUNE_DIR := $(BREW_FORTUNE_PREFIX)/share/games/fortunes
+  else ifeq ($(IS_ARCH),yes)
+    FORTUNE_DIR := $(PREFIX)/share/fortune
   else
-    ifeq ($(IS_ARCH),yes)
-      FORTUNE_DIR := $(PREFIX)/share/fortune
-    else
-      FORTUNE_DIR := $(PREFIX)/share/games/fortunes
-    endif
+    FORTUNE_DIR := $(PREFIX)/share/games/fortunes
   endif
 endif
 
 .PHONY: all compile install dev clean list check
 
-all: install
+all: compile
 
-# 安裝到 fortune 數據目錄（需已安裝 fortune 與 strfile）
-# 注意：.dat 索引格式隨 fortune 版本而異（新版為 32 位、舊版為 64 位），
-# 因此安裝時一律用當前系統的 strfile 重新生成索引，避免版本不匹配導致
-# fortune 輸出整個文件。
-install:
-	@echo "正在安裝文件到 $(FORTUNE_DIR)..."
+# 只安裝本專案的 gushici-*（及以本機 strfile 生成的 .dat），不清空整個目錄。
+# data/ 不在倉庫中，故依賴 compile。
+install: compile
 	@if ! command -v strfile >/dev/null 2>&1; then \
 		echo "錯誤: 未找到命令 'strfile'，請先安裝 fortune（strfile 隨 fortune 一起安裝）"; \
 		exit 1; \
 	fi
-	mkdir -p $(FORTUNE_DIR)
-	cp data/gushici-cht data/gushici-chs $(FORTUNE_DIR)/
-	@echo "正在用當前系統的 strfile 重新生成索引..."
-	strfile -c % $(FORTUNE_DIR)/gushici-cht $(FORTUNE_DIR)/gushici-cht.dat
-	strfile -c % $(FORTUNE_DIR)/gushici-chs $(FORTUNE_DIR)/gushici-chs.dat
+	@case "$(FORTUNE_DIR_SOURCE)" in \
+	  env) echo "FORTUNE_DIR=$(FORTUNE_DIR)（來自已 export 的環境變數）" ;; \
+	  command) echo "FORTUNE_DIR=$(FORTUNE_DIR)（來自 make 命令列，例如 make install FORTUNE_DIR=...）" ;; \
+	  *) echo "FORTUNE_DIR=$(FORTUNE_DIR)（未由環境/命令列指定，依 PREFIX、Homebrew 或系統預設推導）" ;; \
+	esac
+	@echo "正在安裝文件到 $(DESTDIR)$(FORTUNE_DIR)/ ..."
+	mkdir -p $(DESTDIR)$(FORTUNE_DIR)
+	cp data/gushici-cht data/gushici-chs $(DESTDIR)$(FORTUNE_DIR)/
+	strfile -c % $(DESTDIR)$(FORTUNE_DIR)/gushici-cht $(DESTDIR)$(FORTUNE_DIR)/gushici-cht.dat
+	strfile -c % $(DESTDIR)$(FORTUNE_DIR)/gushici-chs $(DESTDIR)$(FORTUNE_DIR)/gushici-chs.dat
 	@echo "安裝成功！可以使用 'fortune gushici-cht' 或 'fortune gushici-chs' 執行。"
 
-# 生成 data/ 與索引（需要 python3、opencc、strfile，並且需安裝 Ruby 或 PyYAML）
+# 需要 python3、opencc、strfile，以及 Ruby 或 PyYAML
 compile:
 	@for cmd in python3 strfile opencc; do \
 		if ! command -v $$cmd >/dev/null 2>&1; then \
@@ -81,20 +89,14 @@ compile:
 	@echo "  本地測試簡體: fortune data/gushici-chs"
 	@echo "============================================="
 
-# 編譯後安裝
-dev: compile install
+dev: install
 
-# 列出所有詩詞條目
 list:
 	@python3 build.py --list
 
-# 按關鍵詞搜尋已有條目（避免重複添加）
 # 用法: make check KEYWORD=李白
 check:
 	@python3 build.py --check "$(KEYWORD)"
 
-# 清理生成的派生文件
 clean:
 	rm -f data/gushici-cht data/gushici-cht.dat data/gushici-chs data/gushici-chs.dat
-
-
