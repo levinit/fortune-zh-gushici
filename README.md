@@ -58,7 +58,7 @@ sudo --preserve-env=FORTUNE_DIR make install
 # 或：sudo -E make install
 ```
 
-> 請用 `$HOME/...`，不要依賴 `~`（Make 對波浪號支援有限）。
+> 路徑請寫 `$HOME/...`（由 shell 展開），例如 `export FORTUNE_DIR=$HOME/.local/share/fortunes`。
 >
 > `make install` 只寫入 `gushici-cht`、`gushici-chs` 及其 `.dat`，不會清空整個 fortune 目錄。
 

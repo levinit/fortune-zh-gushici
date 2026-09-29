@@ -25,9 +25,6 @@ else
   FORTUNE_DIR ?= $(PREFIX)/share/games/fortunes
 endif
 
-# Make 不展開 ~；把開頭的 ~/ 換成 $(HOME)（環境中請優先寫 $HOME/...）
-FORTUNE_DIR := $(patsubst ~/%,$(HOME)/%,$(FORTUNE_DIR))
-
 .PHONY: all compile install dev clean list check
 
 all: compile
