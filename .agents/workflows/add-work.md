@@ -112,8 +112,7 @@ make compile
 至少執行：
 
 ```bash
-python3 -m py_compile build.py
-git diff --check
+make verify
 python3 build.py --check "題名或起句"
 fortune data/gushici-cht
 fortune data/gushici-chs

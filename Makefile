@@ -33,7 +33,7 @@ else
   endif
 endif
 
-.PHONY: all compile install dev clean list check
+.PHONY: all compile install dev clean list check verify
 
 all: compile
 
@@ -97,6 +97,15 @@ list:
 # 用法: make check KEYWORD=李白
 check:
 	@python3 build.py --check "$(KEYWORD)"
+
+verify:
+	@echo ">>> 檢查 Python 語法..."
+	@python3 -m py_compile build.py
+	@echo ">>> 驗證 gushici.yaml 結構與格式..."
+	@python3 build.py --list > /dev/null
+	@echo ">>> 檢查 git 空白與格式問題..."
+	@git diff --check
+	@echo "所有檢查通過！"
 
 clean:
 	rm -f data/gushici-cht data/gushici-cht.dat data/gushici-chs data/gushici-chs.dat
