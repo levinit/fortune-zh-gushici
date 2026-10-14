@@ -11,13 +11,13 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 
 PROJECT = Path(__file__).resolve().parent
 SOURCE = PROJECT / "gushici.yaml"
 CHT_OUTPUT = PROJECT / "data" / "gushici-cht"
-FortuneUnit = dict[str, Any] | list[dict[str, Any]]
+FortuneUnit = Union[dict[str, Any], list[dict[str, Any]]]
 
 ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 ANSI_RESET = "\033[0m"
